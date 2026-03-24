@@ -7,6 +7,7 @@ import io
 import os
 from PyPDF2 import PdfReader
 
+
 pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 
 app = Flask(__name__)
