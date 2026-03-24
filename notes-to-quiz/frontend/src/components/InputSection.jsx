@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 export default function InputSection({
   inputText,
@@ -11,6 +11,9 @@ export default function InputSection({
   error,
 }) {
   const fileInputRef = useRef(null)
+
+  // ✅ FIX: difficulty state add kiya
+  const [difficulty, setDifficulty] = useState("easy")
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
@@ -31,6 +34,47 @@ export default function InputSection({
     }
   }
 
+  // ✅ NEW: Direct API call (text)
+  const handleGenerateText = async () => {
+    try {
+      const res = await fetch("https://notes-to-quiz-ai.onrender.com/generate-quiz", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text: inputText,
+          difficulty: difficulty
+        })
+      })
+
+      const data = await res.json()
+      onGenerateText(data.quiz)
+    } catch (err) {
+      console.error(err)
+      alert("Error generating quiz")
+    }
+  }
+
+  // ✅ NEW: Image API call
+  const handleGenerateImage = async () => {
+    try {
+      const formData = new FormData()
+      formData.append("image", selectedImage)
+
+      const res = await fetch("https://notes-to-quiz-ai.onrender.com/ocr-quiz", {
+        method: "POST",
+        body: formData
+      })
+
+      const data = await res.json()
+      onGenerateImage(data.quiz)
+    } catch (err) {
+      console.error(err)
+      alert("Error processing image")
+    }
+  }
+
   return (
     <>
       {error && <div className="error-message">{error}</div>}
@@ -41,30 +85,25 @@ export default function InputSection({
           id="notes"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="Paste your study notes, textbook content, or any text here..."
+          placeholder="Paste your study notes..."
           disabled={loading}
         />
       </div>
-      <select onChange={(e) => setDifficulty(e.target.value)}>
-  <option value="easy">Easy</option>
-  <option value="medium">Medium</option>
-  <option value="hard">Hard</option>
-</select>
+
+      {/* ✅ Difficulty Selector */}
+      <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
 
       <div className="button-group">
         <button
           className="btn btn-text"
-          onClick={onGenerateText}
+          onClick={handleGenerateText}
           disabled={loading || !inputText.trim()}
         >
-          {loading ? (
-            <span className="loading">
-              <span className="spinner"></span>
-              Generating...
-            </span>
-          ) : (
-            '✨ Generate Quiz from Text'
-          )}
+          {loading ? "Generating..." : "✨ Generate Quiz from Text"}
         </button>
       </div>
 
@@ -85,23 +124,11 @@ export default function InputSection({
         <label htmlFor="image" className="file-input-label">
           {selectedImage ? '✓ Image Selected' : '📁 Click to choose an image'}
         </label>
+
         {selectedImage && (
           <div className="file-name">
-            <strong>{selectedImage.name}</strong> ({(selectedImage.size / 1024).toFixed(1)} KB)
-            <button
-              style={{
-                marginLeft: '10px',
-                background: 'none',
-                border: 'none',
-                color: '#f5576c',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-              }}
-              onClick={handleClearImage}
-              disabled={loading}
-            >
-              ✕ Clear
-            </button>
+            <strong>{selectedImage.name}</strong>
+            <button onClick={handleClearImage}>✕</button>
           </div>
         )}
       </div>
@@ -109,17 +136,10 @@ export default function InputSection({
       <div className="button-group">
         <button
           className="btn btn-image"
-          onClick={onGenerateImage}
+          onClick={handleGenerateImage}
           disabled={loading || !selectedImage}
         >
-          {loading ? (
-            <span className="loading">
-              <span className="spinner"></span>
-              Processing...
-            </span>
-          ) : (
-            '🚀 Upload Image & Generate Quiz'
-          )}
+          🚀 Generate from Image
         </button>
       </div>
     </>
