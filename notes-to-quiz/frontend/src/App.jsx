@@ -141,99 +141,113 @@ export default function App() {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white"
-    }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundImage: "url('/bg.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
 
-      <h1 style={{ fontSize: "32px", marginBottom: "20px" }}>
-        📚 Notes → Quiz AI
-      </h1>
+      {/* 🔥 OVERLAY ADDED */}
+      <div
+        style={{
+          background: "rgba(0,0,0,0.65)",
+          minHeight: "100vh",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white",
+          backdropFilter: "blur(4px)" // 🔥 premium look
+        }}
+      >
 
-      {!quiz ? (
-        <div style={{
-          background: "#1e293b",
-          padding: "30px",
-          borderRadius: "12px",
-          width: "400px",
-          textAlign: "center"
-        }}>
+        <h1 style={{ fontSize: "32px", marginBottom: "20px" }}>
+          📚 Notes → Quiz AI
+        </h1>
 
-          {/* TEXT */}
-          <textarea
-            placeholder="Paste your notes here..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            style={{
-              width: "100%",
-              height: "100px",
-              marginBottom: "10px",
-              borderRadius: "8px",
-              padding: "10px"
-            }}
-          />
+        {!quiz ? (
+          <div style={{
+            background: "rgba(30,41,59,0.85)",
+            padding: "30px",
+            borderRadius: "12px",
+            width: "400px",
+            textAlign: "center",
+            backdropFilter: "blur(10px)"
+          }}>
 
-          {/* DIFFICULTY */}
-          <select
-            value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
-          >
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
+            <textarea
+              placeholder="Paste your notes here..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              style={{
+                width: "100%",
+                height: "100px",
+                marginBottom: "10px",
+                borderRadius: "8px",
+                padding: "10px"
+              }}
+            />
 
-          <button onClick={handleGenerateFromText} style={btnStyle}>
-            Generate from Text
-          </button>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
 
-          <br /><br />
+            <button onClick={handleGenerateFromText} style={btnStyle}>
+              Generate from Text
+            </button>
 
-          {/* IMAGE */}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setSelectedImage(e.target.files[0])}
-          />
-          <button onClick={handleGenerateFromImage} style={btnStyle}>
-            Generate from Image
-          </button>
+            <br /><br />
 
-          <br /><br />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setSelectedImage(e.target.files[0])}
+            />
+            <button onClick={handleGenerateFromImage} style={btnStyle}>
+              Generate from Image
+            </button>
 
-          {/* PDF */}
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={(e) => setSelectedPDF(e.target.files[0])}
-          />
-          <button onClick={handleGenerateFromPDF} style={btnStyle}>
-            Generate from PDF
-          </button>
+            <br /><br />
 
-          {loading && <p>⏳ Generating...</p>}
-          {error && <p style={{ color: "red" }}>{error}</p>}
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setSelectedPDF(e.target.files[0])}
+            />
+            <button onClick={handleGenerateFromPDF} style={btnStyle}>
+              Generate from PDF
+            </button>
 
-        </div>
-      ) : (
-        <div style={{ width: "600px" }}>
-          <button onClick={reset} style={btnStyle}>
-            🔁 Generate Again
-          </button>
+            {loading && <p>⏳ Generating...</p>}
+            {error && <p style={{ color: "red" }}>{error}</p>}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <QuizCard quiz={quiz} />
-          </motion.div>
-        </div>
-      )}
+          </div>
+        ) : (
+          <div style={{ width: "600px" }}>
+            <button onClick={reset} style={btnStyle}>
+              🔁 Generate Again
+            </button>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <QuizCard quiz={quiz} />
+            </motion.div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
