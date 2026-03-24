@@ -1,6 +1,5 @@
 import { useState } from "react";
 import QuizCard from "./components/QuizCard";
-import { motion } from "framer-motion";
 
 const API_BASE_URL = "https://notes-to-quiz-ai.onrender.com";
 
@@ -13,7 +12,16 @@ export default function App() {
   const [error, setError] = useState("");
   const [difficulty, setDifficulty] = useState("easy");
 
-  // 🔹 TEXT QUIZ
+  // ✅ FILE HANDLERS
+  const handleImageUpload = (e) => {
+    setSelectedImage(e.target.files[0]);
+  };
+
+  const handlePdfUpload = (e) => {
+    setSelectedPDF(e.target.files[0]);
+  };
+
+  // ✅ TEXT QUIZ
   const handleGenerateFromText = async () => {
     if (!inputText.trim()) {
       setError("Enter some text first");
@@ -21,7 +29,7 @@ export default function App() {
     }
 
     setLoading(true);
-    setError("");
+    setError("Server starting... please wait");
 
     try {
       const res = await fetch(`${API_BASE_URL}/generate-quiz`, {
@@ -35,20 +43,19 @@ export default function App() {
         }),
       });
 
+      if (!res.ok) throw new Error("Server error");
+
       const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error);
-
       setQuiz(data.quiz);
     } catch (err) {
-      setError("Backend not responding or CORS issue");
+      setError("Backend not responding (Render sleep / CORS issue)");
       setQuiz(null);
     }
 
     setLoading(false);
   };
 
-  // 🔹 IMAGE QUIZ
+  // ✅ IMAGE QUIZ
   const handleGenerateFromImage = async () => {
     if (!selectedImage) return setError("Select an image first");
 
@@ -64,10 +71,9 @@ export default function App() {
         body: formData,
       });
 
+      if (!res.ok) throw new Error("Image API error");
+
       const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error);
-
       setQuiz(data.quiz);
     } catch {
       setError("Image API failed");
@@ -76,7 +82,7 @@ export default function App() {
     setLoading(false);
   };
 
-  // 🔹 PDF QUIZ
+  // ✅ PDF QUIZ
   const handleGenerateFromPDF = async () => {
     if (!selectedPDF) return setError("Select a PDF first");
 
@@ -92,10 +98,9 @@ export default function App() {
         body: formData,
       });
 
+      if (!res.ok) throw new Error("PDF API error");
+
       const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error);
-
       setQuiz(data.quiz);
     } catch {
       setError("PDF API failed");
@@ -112,126 +117,84 @@ export default function App() {
     setError("");
   };
 
-  const btnStyle = {
-    padding: "12px 18px",
-    borderRadius: "10px",
+  const btn = {
+    width: "100%",
+    padding: "10px",
+    borderRadius: "8px",
     border: "none",
-    background: "#6366f1",
+    background: "#f16382",
     color: "white",
     fontWeight: "500",
     cursor: "pointer",
-    marginTop: "10px",
-    transition: "all 0.2s ease",
+    marginBottom: "10px",
+    transition: "0.2s",
   };
 
   return (
-  <div
-    style={{
-      minHeight: "100vh",
-      backgroundImage: "url('/bg.jpg')",
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    {/* DARK OVERLAY */}
     <div
       style={{
-        width: "100%",
-        height: "100%",
-        background: "rgba(15, 23, 42, 0.75)", // dark blue overlay
-        backdropFilter: "blur(8px)",
+        minHeight: "100vh",
+        backgroundImage: "url('/bg.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      {/* MAIN CARD */}
+      {/* OVERLAY */}
       <div
         style={{
-          width: "420px",
-          padding: "30px",
-          borderRadius: "16px",
-          background: "rgba(30, 41, 59, 0.6)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
-          textAlign: "center",
+          width: "100%",
+          height: "100%",
+          background: "rgba(15, 23, 42, 0.75)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        {/* TITLE */}
-        <h1
+        {/* CARD */}
+        <div
           style={{
-            fontSize: "26px",
-            fontWeight: "600",
-            color: "#f1f5f9",
-            marginBottom: "20px",
-            letterSpacing: "0.5px",
+            width: "420px",
+            padding: "30px",
+            borderRadius: "16px",
+            background: "rgba(30, 41, 59, 0.6)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
+            textAlign: "center",
           }}
         >
-          📘 Notes → Quiz AI
-        </h1>
+          <h1 style={{ color: "#f1f5f9", marginBottom: "20px" }}>
+            📘 Notes → Quiz AI
+          </h1>
 
-        {/* TEXTAREA */}
-        <textarea
-          placeholder="Paste your notes here..."
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          style={{
-            width: "100%",
-            height: "110px",
-            borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            padding: "12px",
-            background: "rgba(15, 23, 42, 0.6)",
-            color: "#e2e8f0",
-            outline: "none",
-            resize: "none",
-            marginBottom: "15px",
-          }}
-        />
-
-        {/* DROPDOWN */}
-        <select
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value)}
-          style={{
-            padding: "8px",
-            borderRadius: "8px",
-            background: "#0f172a",
-            color: "white",
-            border: "1px solid rgba(255,255,255,0.1)",
-            marginBottom: "15px",
-          }}
-        >
-          <option value="easy">Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-
-        {/* BUTTON STYLE */}
-        {/*
-          reuse same style for all buttons
-        */}
-        {(() => {
-          const btn = {
-            width: "100%",
-            padding: "10px",
-            borderRadius: "8px",
-            border: "none",
-            background: "#6366f1",
-            color: "white",
-            fontWeight: "500",
-            cursor: "pointer",
-            marginBottom: "10px",
-            transition: "0.2s",
-          };
-
-          return (
+          {!quiz ? (
             <>
-              {/* TEXT BUTTON */}
+              <textarea
+                placeholder="Paste your notes..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                style={{
+                  width: "100%",
+                  height: "110px",
+                  borderRadius: "10px",
+                  padding: "12px",
+                  marginBottom: "15px",
+                }}
+              />
+
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+
               <button
                 onClick={handleGenerateFromText}
                 style={btn}
@@ -242,10 +205,9 @@ export default function App() {
                   (e.target.style.background = "#6366f1")
                 }
               >
-                Generate from Text
+                {loading ? "Loading..." : "Generate from Text"}
               </button>
 
-              {/* IMAGE */}
               <input type="file" onChange={handleImageUpload} />
 
               <button
@@ -261,7 +223,6 @@ export default function App() {
                 Generate from Image
               </button>
 
-              {/* PDF */}
               <input type="file" onChange={handlePdfUpload} />
 
               <button
@@ -276,17 +237,18 @@ export default function App() {
               >
                 Generate from PDF
               </button>
-            </>
-          );
-        })()}
 
-        {/* ERROR */}
-        {error && (
-          <p style={{ color: "#f87171", marginTop: "10px" }}>
-            {error}
-          </p>
-        )}
+              {error && (
+                <p style={{ color: "red", marginTop: "10px" }}>
+                  {error}
+                </p>
+              )}
+            </>
+          ) : (
+            <QuizCard quiz={quiz} onReset={reset} />
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+}
