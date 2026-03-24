@@ -4,6 +4,7 @@ import random
 import pytesseract
 from PIL import Image
 import io
+import os
 from PyPDF2 import PdfReader
 
 pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
@@ -123,4 +124,5 @@ def pdf_quiz():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5002, debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
