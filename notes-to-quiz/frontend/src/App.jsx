@@ -2,18 +2,17 @@ import { useState } from "react";
 import QuizCard from "./components/QuizCard";
 import { motion } from "framer-motion";
 
-const API_BASE_URL = "https://shiny-winner-7vjwv695q4g9247r-5002.app.github.dev";
+const API_BASE_URL = "https://notes-to-quiz-ai.onrender.com";
 
 export default function App() {
 
-  // 🔥 ALL STATES (correct place)
   const [inputText, setInputText] = useState("");
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedPDF, setSelectedPDF] = useState(null);
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [difficulty, setDifficulty] = useState("easy");
-  const [selectedPDF, setSelectedPDF] = useState(null);
 
   // 🔹 TEXT QUIZ
   const handleGenerateFromText = async () => {
@@ -31,19 +30,22 @@ export default function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           text: inputText,
-          difficulty: difficulty   // 🔥 added
+          difficulty: difficulty,
         }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        throw new Error(data.error || "Server error");
+      }
 
       setQuiz(data.quiz);
+
     } catch (err) {
-      setError(err.message);
+      setError("Backend not responding or CORS issue");
       setQuiz(null);
     }
 
@@ -71,51 +73,60 @@ export default function App() {
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        throw new Error(data.error || "Server error");
+      }
 
       setQuiz(data.quiz);
+
     } catch (err) {
-      setError(err.message);
+      setError("Image API failed");
       setQuiz(null);
     }
 
     setLoading(false);
   };
+
+  // 🔹 PDF QUIZ
   const handleGenerateFromPDF = async () => {
-  if (!selectedPDF) {
-    setError("Select a PDF first");
-    return;
-  }
+    if (!selectedPDF) {
+      setError("Select a PDF first");
+      return;
+    }
 
-  setLoading(true);
-  setError("");
+    setLoading(true);
+    setError("");
 
-  const formData = new FormData();
-  formData.append("pdf", selectedPDF);
+    const formData = new FormData();
+    formData.append("pdf", selectedPDF);
 
-  try {
-    const res = await fetch(`${API_BASE_URL}/pdf-quiz`, {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const res = await fetch(`${API_BASE_URL}/pdf-quiz`, {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        throw new Error(data.error || "Server error");
+      }
 
-    setQuiz(data.quiz);
-  } catch (err) {
-    setError(err.message);
-    setQuiz(null);
-  }
+      setQuiz(data.quiz);
 
-  setLoading(false);
-};
+    } catch (err) {
+      setError("PDF API failed");
+      setQuiz(null);
+    }
+
+    setLoading(false);
+  };
 
   const reset = () => {
     setQuiz(null);
     setInputText("");
     setSelectedImage(null);
+    setSelectedPDF(null);
     setError("");
   };
 
@@ -139,6 +150,7 @@ export default function App() {
       justifyContent: "center",
       color: "white"
     }}>
+
       <h1 style={{ fontSize: "32px", marginBottom: "20px" }}>
         📚 Notes → Quiz AI
       </h1>
@@ -151,7 +163,8 @@ export default function App() {
           width: "400px",
           textAlign: "center"
         }}>
-          {/* TEXT INPUT */}
+
+          {/* TEXT */}
           <textarea
             placeholder="Paste your notes here..."
             value={inputText}
@@ -165,15 +178,10 @@ export default function App() {
             }}
           />
 
-          {/* 🔥 DIFFICULTY SELECTOR */}
+          {/* DIFFICULTY */}
           <select
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value)}
-            style={{
-              marginBottom: "10px",
-              padding: "8px",
-              borderRadius: "6px"
-            }}
           >
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
@@ -186,43 +194,44 @@ export default function App() {
 
           <br /><br />
 
-          {/* IMAGE INPUT */}
+          {/* IMAGE */}
           <input
             type="file"
             accept="image/*"
             onChange={(e) => setSelectedImage(e.target.files[0])}
           />
-
           <button onClick={handleGenerateFromImage} style={btnStyle}>
             Generate from Image
           </button>
+
           <br /><br />
 
-{/* PDF INPUT */}
-<input
-  type="file"
-  accept=".pdf"
-  onChange={(e) => setSelectedPDF(e.target.files[0])}
-/>
-<h4>Upload PDF</h4>
-<button onClick={handleGenerateFromPDF} style={btnStyle}>
-  Generate from PDF
-</button>
+          {/* PDF */}
+          <input
+            type="file"
+            accept=".pdf"
+            onChange={(e) => setSelectedPDF(e.target.files[0])}
+          />
+          <button onClick={handleGenerateFromPDF} style={btnStyle}>
+            Generate from PDF
+          </button>
 
           {loading && <p>⏳ Generating...</p>}
           {error && <p style={{ color: "red" }}>{error}</p>}
+
         </div>
       ) : (
         <div style={{ width: "600px" }}>
           <button onClick={reset} style={btnStyle}>
             🔁 Generate Again
           </button>
+
           <motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
->
-  <QuizCard quiz={quiz} />
-</motion.div>
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <QuizCard quiz={quiz} />
+          </motion.div>
         </div>
       )}
     </div>
