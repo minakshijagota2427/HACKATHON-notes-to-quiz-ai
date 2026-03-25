@@ -9,10 +9,10 @@ import re
 import cv2
 import numpy as np
 import shutil
+import pytesseract
 
-# ================= TESSERACT AUTO DETECT =================
-tesseract_path = shutil.which("tesseract")
-print("Detected Tesseract Path:", tesseract_path)
+pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract")
+print("Tesseract Path:", pytesseract.pytesseract.tesseract_cmd)
 
 pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
