@@ -4,14 +4,18 @@ import random
 import pytesseract
 from PIL import Image
 import io
-import os
 from PyPDF2 import PdfReader
 import re
 import cv2
 import numpy as np
+import shutil
 
-pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
-print("PATH:", pytesseract.pytesseract.tesseract_cmd)
+# ================= TESSERACT AUTO DETECT =================
+tesseract_path = shutil.which("tesseract")
+print("Detected Tesseract Path:", tesseract_path)
+
+pytesseract.pytesseract.tesseract_cmd = tesseract_path
+
 app = Flask(__name__)
 CORS(app)
 
@@ -25,13 +29,12 @@ def generate_quiz(text, difficulty="easy"):
     questions = []
 
     text = clean_text(text)
-    sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 15]
+    sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 10]
 
     if not sentences:
         return []
 
     for sentence in sentences[:5]:
-
         correct_answer = sentence
 
         other_sentences = [s for s in sentences if s != sentence]
@@ -47,7 +50,7 @@ def generate_quiz(text, difficulty="easy"):
 
         question = {
             "type": "mcq",
-            "question": "What is correct statement?",
+            "question": "Which statement is correct?",
             "options": options,
             "answer": correct_answer
         }
@@ -56,24 +59,33 @@ def generate_quiz(text, difficulty="easy"):
 
     return questions
 
-
-# ================= OCR IMPROVED =================
+# ================= SMART OCR FUNCTION =================
 def extract_text_from_image(image):
     try:
-        img = np.array(image)
+        # Convert to grayscale
+        img = np.array(image.convert("L"))
 
-        # convert to grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # Resize (balanced for speed + clarity)
+        h, w = img.shape
+        if w < 1000:
+            img = cv2.resize(img, (1000, int(h * 1000 / w)))
 
-        # blur for noise removal
-        gray = cv2.GaussianBlur(gray, (5, 5), 0)
+        # Improve contrast
+        img = cv2.equalizeHist(img)
 
-        # threshold for clarity
-        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+        # Adaptive threshold
+        thresh = cv2.adaptiveThreshold(
+            img, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            11, 2
+        )
 
-        custom_config = r'--oem 3 --psm 6'
-
-        text = pytesseract.image_to_string(thresh, config=custom_config)
+        # OCR
+        text = pytesseract.image_to_string(
+            thresh,
+            config='--oem 3 --psm 6'
+        )
 
         return clean_text(text)
 
@@ -81,12 +93,10 @@ def extract_text_from_image(image):
         print("OCR ERROR:", e)
         return ""
 
-
 # ================= HOME =================
 @app.route('/')
 def home():
     return jsonify({"message": "Backend running 🚀"})
-
 
 # ================= TEXT =================
 @app.route('/generate-quiz', methods=['POST'])
@@ -103,7 +113,6 @@ def quiz():
 
     return jsonify({"quiz": quiz})
 
-
 # ================= OCR =================
 @app.route('/ocr-quiz', methods=['POST'])
 def ocr_quiz():
@@ -111,13 +120,14 @@ def ocr_quiz():
         return jsonify({"error": "No image"}), 400
 
     file = request.files['image']
+    print("Image received:", file.filename)
 
     try:
         image = Image.open(io.BytesIO(file.read())).convert("RGB")
 
         text = extract_text_from_image(image)
 
-        print("OCR TEXT:", text)
+        print("OCR TEXT:", text[:200])
 
         if not text or len(text) < 10:
             return jsonify({"error": "No readable text found in image"}), 400
@@ -128,7 +138,6 @@ def ocr_quiz():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # ================= PDF =================
 @app.route('/pdf-quiz', methods=['POST'])
@@ -158,7 +167,6 @@ def pdf_quiz():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # ================= RUN =================
 if __name__ == '__main__':

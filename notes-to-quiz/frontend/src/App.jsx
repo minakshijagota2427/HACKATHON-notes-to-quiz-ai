@@ -11,9 +11,38 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [difficulty, setDifficulty] = useState("easy");
-
-  // 🔥 NEW (extracted text preview)
   const [previewText, setPreviewText] = useState("");
+
+  // ================= IMAGE COMPRESSION =================
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const MAX_WIDTH = 800;
+        const scale = MAX_WIDTH / img.width;
+
+        canvas.width = MAX_WIDTH;
+        canvas.height = img.height * scale;
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, "image/jpeg", 0.7);
+      };
+
+      reader.readAsDataURL(file);
+    });
+  };
 
   // ================= TEXT =================
   const handleGenerateFromText = async () => {
@@ -44,7 +73,7 @@ export default function App() {
         setQuiz(null);
       } else {
         setQuiz(data.quiz);
-        setPreviewText(""); // clear preview
+        setPreviewText("");
         setError("");
       }
     } catch {
@@ -55,25 +84,27 @@ export default function App() {
     setLoading(false);
   };
 
-  // ================= IMAGE FIXED =================
+  // ================= IMAGE (FIXED + FAST) =================
   const handleGenerateFromImage = async () => {
     if (!selectedImage) {
       setError("⚠️ Select image first");
       return;
     }
 
-    if (!selectedImage.type.startsWith("image/")) {
-      setError("❌ Please upload valid image");
+    if (selectedImage.size > 2 * 1024 * 1024) {
+      setError("❌ Image too large (max 2MB)");
       return;
     }
 
     setLoading(true);
     setError("⏳ Processing image...");
 
-    const formData = new FormData();
-    formData.append("image", selectedImage);
-
     try {
+      const compressed = await compressImage(selectedImage);
+
+      const formData = new FormData();
+      formData.append("image", compressed); // ✅ FIXED
+
       const res = await fetch(`${API_BASE_URL}/ocr-quiz`, {
         method: "POST",
         body: formData,
@@ -81,15 +112,13 @@ export default function App() {
 
       const data = await res.json();
 
-      console.log("🔥 OCR TEXT:", data.extracted_text); // ✅ DEBUG
-
       if (!data.quiz || data.quiz.length === 0) {
         setError(data.error || "⚠️ No text found in image");
         setQuiz(null);
         setPreviewText("");
       } else {
         setQuiz(data.quiz);
-        setPreviewText(data.extracted_text || ""); // ✅ SHOW TEXT
+        setPreviewText(data.extracted_text || "");
         setError("");
       }
     } catch {
@@ -99,7 +128,7 @@ export default function App() {
     setLoading(false);
   };
 
-  // ================= PDF FIXED =================
+  // ================= PDF =================
   const handleGenerateFromPDF = async () => {
     if (!selectedPDF) {
       setError("⚠️ Select PDF first");
@@ -124,8 +153,6 @@ export default function App() {
       });
 
       const data = await res.json();
-
-      console.log("🔥 PDF TEXT:", data.extracted_text); // ✅ DEBUG
 
       if (!data.quiz || data.quiz.length === 0) {
         setError(data.error || "⚠️ No readable text in PDF");
@@ -211,7 +238,7 @@ export default function App() {
               </select>
 
               <button onClick={handleGenerateFromText} style={btnStyle}>
-                Generate from Text
+                {loading ? "Processing..." : "Generate from Text"}
               </button>
 
               <input
@@ -219,7 +246,7 @@ export default function App() {
                 onChange={(e) => setSelectedImage(e.target.files[0])}
               />
               <button onClick={handleGenerateFromImage} style={btnStyle}>
-                Generate from Image
+                {loading ? "Processing..." : "Generate from Image"}
               </button>
 
               <input
@@ -227,10 +254,9 @@ export default function App() {
                 onChange={(e) => setSelectedPDF(e.target.files[0])}
               />
               <button onClick={handleGenerateFromPDF} style={btnStyle}>
-                Generate from PDF
+                {loading ? "Processing..." : "Generate from PDF"}
               </button>
 
-              {/* 🔥 SHOW EXTRACTED TEXT */}
               {previewText && (
                 <div style={{ marginTop: "10px", color: "white", fontSize: "12px" }}>
                   <strong>Detected Text:</strong>
