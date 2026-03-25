@@ -171,91 +171,71 @@ export default function App() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        backgroundImage: "url('/bg.jpg')",
-        backgroundSize: "cover",
-      }}
-    >
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "rgba(15,23,42,0.75)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <div
-          style={{
-            width: "420px",
-            padding: "30px",
-            borderRadius: "20px",
-            background: "rgba(30,41,59,0.7)",
-          }}
+    <div className="wrapper">
+  <div className="card">
+
+    <h1 className="title">📘 Notes → Quiz AI</h1>
+
+    {!quiz ? (
+      <>
+        <textarea
+          placeholder="Paste your notes..."
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+        />
+
+        <select
+          value={difficulty}
+          onChange={(e) => setDifficulty(e.target.value)}
         >
-          <h1 style={{ color: "white" }}>📘 Notes → Quiz AI</h1>
+          <option>Easy</option>
+          <option>Medium</option>
+          <option>Hard</option>
+        </select>
 
-          {!quiz ? (
-            <>
-              <textarea
-                placeholder="Paste your notes..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-              />
+        <button onClick={handleGenerateFromText} className="btn">
+          {loadingText ? "Processing..." : "Generate from Text"}
+        </button>
 
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-              >
-                <option>Easy</option>
-                <option>Medium</option>
-                <option>Hard</option>
-              </select>
-
-              <button onClick={handleGenerateFromText} style={btnStyle}>
-                {loadingText ? "Processing..." : "Generate from Text"}
-              </button>
-
-              <label className="file-input">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setSelectedImage(e.target.files[0])}
-                />
-              </label>
-
-              <button onClick={handleGenerateFromImage} style={btnStyle}>
-                {loadingImage ? "Processing..." : "Generate from Image"}
-              </button>
-
-              <label className="file-input">
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) => setSelectedPDF(e.target.files[0])}
-                />
-              </label>
-
-              <button onClick={handleGenerateFromPDF} style={btnStyle}>
-                {loadingPDF ? "Processing..." : "Generate from PDF"}
-              </button>
-
-              {previewText && (
-                <div style={{ marginTop: "10px", color: "white", fontSize: "12px" }}>
-                  <strong>Detected Text:</strong>
-                  <p>{previewText}</p>
-                </div>
-              )}
-
-              {error && <p style={{ color: "red" }}>{error}</p>}
-            </>
-          ) : (
-            <QuizCard quiz={quiz} onReset={reset} />
-          )}
+        <div className="file-input">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setSelectedImage(e.target.files[0])}
+          />
+          <span>{selectedImage?.name || "No file chosen"}</span>
         </div>
-      </div>
-    </div>
+
+        <button onClick={handleGenerateFromImage} className="btn">
+          {loadingImage ? "Processing..." : "Generate from Image"}
+        </button>
+
+        <div className="file-input">
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setSelectedPDF(e.target.files[0])}
+          />
+          <span>{selectedPDF?.name || "No file chosen"}</span>
+        </div>
+
+        <button onClick={handleGenerateFromPDF} className="btn">
+          {loadingPDF ? "Processing..." : "Generate from PDF"}
+        </button>
+
+        {previewText && (
+          <div className="preview">
+            <strong>Detected Text:</strong>
+            <p>{previewText}</p>
+          </div>
+        )}
+
+        {error && <p className="error">{error}</p>}
+      </>
+    ) : (
+      <QuizCard quiz={quiz} onReset={reset} />
+    )}
+  </div>
+</div>
   );
 }
