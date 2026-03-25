@@ -88,6 +88,10 @@ export default function QuizCard({ quiz = [], onReset }) {
 
   const score = calculateScore();
   const wrong = quiz.length - score;
+  const clearHistory = () => {
+  setScores([]);
+  localStorage.removeItem("scores");
+};
 
   const chartData = [
     { name: "Correct", value: score },
@@ -95,12 +99,16 @@ export default function QuizCard({ quiz = [], onReset }) {
   ];
 
   const saveScore = () => {
-    const scores = JSON.parse(localStorage.getItem("scores")) || [];
-    scores.push(score);
-    localStorage.setItem("scores", JSON.stringify(scores));
-  };
+  setScores(prev => {
+    const updated = [...prev, score];
+    localStorage.setItem("scores", JSON.stringify(updated));
+    return updated;
+  });
+};
 
-  const scores = JSON.parse(localStorage.getItem("scores")) || [];
+  const [scores, setScores] = useState(
+    JSON.parse(localStorage.getItem("scores")) || []
+  );
 
   // TIMER FIX
   useEffect(() => {
@@ -168,9 +176,8 @@ export default function QuizCard({ quiz = [], onReset }) {
               {q.options.map((opt, i) => (
                 <div
                   key={i}
-                  className={`option ${
-                    answers[currentQ] === opt ? "selected" : ""
-                  }`}
+                  className={`option ${answers[currentQ] === opt ? "selected" : ""
+                    }`}
                   onClick={() => handleSelect(opt)}
                 >
                   <span className="label">
@@ -230,6 +237,9 @@ export default function QuizCard({ quiz = [], onReset }) {
           </PieChart>
 
           <h4>🏆 History: {scores.join(", ")}</h4>
+          <button onClick={clearHistory} className="clear-btn">
+            🗑️ Clear History
+          </button>
 
           <button className="pdf-btn" onClick={downloadPDF}>
             📄 Download Full Paper

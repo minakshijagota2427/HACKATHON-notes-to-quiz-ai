@@ -13,7 +13,7 @@ export default function InputSection({
   const fileInputRef = useRef(null)
 
   // ✅ FIX: difficulty state add kiya
-  const [difficulty, setDifficulty] = useState("easy")
+  const [difficulty, setDifficulty] = useState("Easy")
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
@@ -92,9 +92,9 @@ export default function InputSection({
 
       {/* ✅ Difficulty Selector */}
       <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-        <option value="easy">Easy</option>
-        <option value="medium">Medium</option>
-        <option value="hard">Hard</option>
+        <option value="Easy">Easy</option>
+        <option value="Medium">Medium</option>
+        <option value="Hard">Hard</option>
       </select>
 
       <div className="button-group">
