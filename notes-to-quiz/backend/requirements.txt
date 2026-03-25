@@ -3,11 +3,8 @@ flask-cors
 pytesseract
 pillow
 PyPDF2
-gunicorn
-
-
-
-
+opencv-python-headless
+numpy
 
 
 

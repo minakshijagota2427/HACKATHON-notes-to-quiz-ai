@@ -9,12 +9,12 @@ import re
 import cv2
 import numpy as np
 import shutil
-import pytesseract
 
-pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract")
-print("Tesseract Path:", pytesseract.pytesseract.tesseract_cmd)
-
+# ✅ AUTO DETECT TESSERACT
+tesseract_path = shutil.which("tesseract")
 pytesseract.pytesseract.tesseract_cmd = tesseract_path
+
+print("Tesseract Path:", tesseract_path)
 
 app = Flask(__name__)
 CORS(app)
@@ -48,42 +48,27 @@ def generate_quiz(text, difficulty="easy"):
         options = [correct_answer] + distractors
         random.shuffle(options)
 
-        question = {
+        questions.append({
             "type": "mcq",
             "question": "Which statement is correct?",
             "options": options,
             "answer": correct_answer
-        }
-
-        questions.append(question)
+        })
 
     return questions
 
-# ================= SMART OCR FUNCTION =================
+# ================= FAST OCR =================
 def extract_text_from_image(image):
     try:
-        # Convert to grayscale
         img = np.array(image.convert("L"))
 
-        # Resize (balanced for speed + clarity)
+        # resize (speed + clarity)
         h, w = img.shape
-        if w < 1000:
-            img = cv2.resize(img, (1000, int(h * 1000 / w)))
+        if w > 800:
+            img = cv2.resize(img, (800, int(h * 800 / w)))
 
-        # Improve contrast
-        img = cv2.equalizeHist(img)
-
-        # Adaptive threshold
-        thresh = cv2.adaptiveThreshold(
-            img, 255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
-            11, 2
-        )
-
-        # OCR
         text = pytesseract.image_to_string(
-            thresh,
+            img,
             config='--oem 3 --psm 6'
         )
 
@@ -93,12 +78,11 @@ def extract_text_from_image(image):
         print("OCR ERROR:", e)
         return ""
 
-# ================= HOME =================
+# ================= ROUTES =================
 @app.route('/')
 def home():
     return jsonify({"message": "Backend running 🚀"})
 
-# ================= TEXT =================
 @app.route('/generate-quiz', methods=['POST'])
 def quiz():
     data = request.get_json()
@@ -113,33 +97,31 @@ def quiz():
 
     return jsonify({"quiz": quiz})
 
-# ================= OCR =================
 @app.route('/ocr-quiz', methods=['POST'])
 def ocr_quiz():
     if 'image' not in request.files:
         return jsonify({"error": "No image"}), 400
 
     file = request.files['image']
-    print("Image received:", file.filename)
 
     try:
         image = Image.open(io.BytesIO(file.read())).convert("RGB")
 
         text = extract_text_from_image(image)
 
-        print("OCR TEXT:", text[:200])
-
         if not text or len(text) < 10:
-            return jsonify({"error": "No readable text found in image"}), 400
+            return jsonify({"error": "No readable text found"}), 400
 
         quiz = generate_quiz(text)
 
-        return jsonify({"quiz": quiz})
+        return jsonify({
+            "quiz": quiz,
+            "extracted_text": text
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ================= PDF =================
 @app.route('/pdf-quiz', methods=['POST'])
 def pdf_quiz():
     if 'pdf' not in request.files:
@@ -159,15 +141,18 @@ def pdf_quiz():
         text = clean_text(text)
 
         if not text or len(text) < 20:
-            return jsonify({"error": "No readable text found in PDF"}), 400
+            return jsonify({"error": "No readable text found"}), 400
 
         quiz = generate_quiz(text)
 
-        return jsonify({"quiz": quiz})
+        return jsonify({
+            "quiz": quiz,
+            "extracted_text": text
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 # ================= RUN =================
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5002, debug=True)
+    app.run(host="0.0.0.0", port=5002)
