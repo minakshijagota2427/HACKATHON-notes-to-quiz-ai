@@ -9,12 +9,12 @@ import re
 import cv2
 import numpy as np
 import shutil
-from pdf2image import convert_from_bytes
+import img2pdf
 
 # ================= TESSERACT SETUP =================
+TESSERACT_FALLBACK_MSG = "Tesseract not installed. OCR cannot run."
 tesseract_path = shutil.which("tesseract")
 print("[DEBUG] Tesseract Path:", tesseract_path)
-
 if tesseract_path:
     pytesseract.pytesseract.tesseract_cmd = tesseract_path
 else:
@@ -33,31 +33,35 @@ def extract_keywords(text):
     return [w for w in words if len(w) > 5]
 
 # ================= QUIZ GENERATOR =================
+
 def generate_quiz(text, difficulty="easy"):
     questions = []
 
-    text = clean_text(text)
+    # clean text
+    text = re.sub(r'\s+', ' ', text)
     sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 20]
 
-    if len(sentences) < 2:
+    if len(sentences) < 3:
         return []
 
     for sentence in sentences[:5]:
 
         words = sentence.split()
+
+        # skip small sentences
         if len(words) < 6:
             continue
 
+        # pick a keyword (important word)
         keywords = extract_keywords(sentence)
         if not keywords:
             continue
-
         keyword = random.choice(keywords)
 
-        # options
+        # create options
         options = [keyword]
-        distractors = []
 
+        distractors = []
         for s in sentences:
             for w in s.split():
                 if w != keyword and len(w) > 4:
@@ -65,6 +69,7 @@ def generate_quiz(text, difficulty="easy"):
 
         random.shuffle(distractors)
 
+        # add 3 wrong options
         for d in distractors:
             if len(options) >= 4:
                 break
@@ -72,70 +77,57 @@ def generate_quiz(text, difficulty="easy"):
                 options.append(d)
 
         random.shuffle(options)
-
-        # question type
         q_type = random.choice(["fill", "direct"])
-
         if q_type == "fill":
             question_text = sentence.replace(keyword, "_____")
             question = f"Fill in the blank: {question_text}"
         else:
-            question = f"What is '{keyword}' referring to in the sentence?"
-
-        questions.append({
-            "type": "mcq",
-            "question": question,
-            "options": options,
-            "answer": keyword
-        })
-
+            question = f"What is the meaning of '{keyword}' in this context?"
+            questions.append({
+                "type": "mcq",
+                "question": question,
+                "options": options,
+                "answer": keyword
+                })
     return questions
-
-# ================= IMAGE OCR =================
+# ================= FAST OCR =================
 def extract_text_from_image(image):
     try:
+        import cv2
+        import numpy as np
+
         img = np.array(image)
 
+        # BGR convert
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+        # Resize (IMPORTANT 🔥)
         img = cv2.resize(img, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
 
+        # Grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+        # Sharpen
+        kernel = np.array([[0, -1, 0],
+                           [-1, 5,-1],
+                           [0, -1, 0]])
+        sharp = cv2.filter2D(gray, -1, kernel)
 
-        text = pytesseract.image_to_string(thresh, config="--oem 3 --psm 6")
+        # Threshold (KEY FIX 🔥)
+        _, thresh = cv2.threshold(sharp, 150, 255, cv2.THRESH_BINARY)
+
+        # OCR CONFIG (VERY IMPORTANT)
+        custom_config = r'--oem 3 --psm 6'
+
+        text = pytesseract.image_to_string(thresh, config=custom_config)
 
         print("OCR TEXT:", text[:200])
-        return clean_text(text)
+
+        return text.strip()
 
     except Exception as e:
         print("OCR ERROR:", e)
         return ""
-
-# ================= PDF OCR =================
-def extract_text_from_pdf(file):
-    text = ""
-
-    try:
-        reader = PdfReader(file)
-        for page in reader.pages:
-            extracted = page.extract_text()
-            if extracted:
-                text += extracted + " "
-    except:
-        pass
-
-    # fallback OCR
-    if len(text.strip()) < 20:
-        print("⚠️ Using OCR fallback for PDF")
-        images = convert_from_bytes(file.read())
-
-        for img in images:
-            img = np.array(img.convert("L"))
-            text += pytesseract.image_to_string(img)
-
-    return clean_text(text)
-
 # ================= ROUTES =================
 
 @app.route('/')
@@ -150,14 +142,15 @@ def quiz():
     if not data or "text" not in data:
         return jsonify({"error": "Text required"}), 400
 
-    quiz = generate_quiz(data["text"])
+    quiz = generate_quiz(data["text"], data.get("difficulty", "easy"))
 
     if not quiz:
         return jsonify({"error": "No quiz generated"}), 400
 
     return jsonify({"quiz": quiz})
 
-# ---------- IMAGE ----------
+
+# ---------- IMAGE OCR ----------
 @app.route('/ocr-quiz', methods=['POST'])
 def ocr_quiz():
     if 'image' not in request.files:
@@ -168,47 +161,39 @@ def ocr_quiz():
     try:
         image = Image.open(io.BytesIO(file.read())).convert("RGB")
 
-        text = extract_text_from_image(image)
+        # 🔥 STEP 1: Convert image → PDF
+        pdf_file = convert_image_to_pdf(image)
 
+        if not pdf_file:
+            return jsonify({"error": "Conversion failed"}), 500
+
+        # 🔥 STEP 2: Read PDF
+        reader = PdfReader(pdf_file)
+        text = ""
+
+        for page in reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted + " "
+
+        text = clean_text(text)
+
+        # ⚠️ fallback if PDF text fail
         if not text or len(text) < 10:
-            return jsonify({"error": "No readable text found"}), 400
-
-        quiz = generate_quiz(text)
-
-        return jsonify({
-            "quiz": quiz,
-            "extracted_text": text
-        })
+            text = pytesseract.image_to_string(image)
+            if not text:
+                return jsonify({
+                    "error": "No readable text found",
+                    "raw_text": text
+                    }), 400
+            quiz = generate_quiz(text)
+            return jsonify({
+                "quiz": quiz,
+                "extracted_text": text
+                })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# ---------- PDF ----------
-@app.route('/pdf-quiz', methods=['POST'])
-def pdf_quiz():
-    if 'pdf' not in request.files:
-        return jsonify({"error": "No PDF uploaded"}), 400
-
-    file = request.files['pdf']
-
-    try:
-        text = extract_text_from_pdf(file)
-
-        print("PDF TEXT:", text[:200])
-
-        if not text or len(text) < 10:
-            return jsonify({"error": "No readable text in PDF"}), 400
-
-        quiz = generate_quiz(text)
-
-        return jsonify({
-            "quiz": quiz,
-            "extracted_text": text
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 # ================= RUN =================
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5002)
