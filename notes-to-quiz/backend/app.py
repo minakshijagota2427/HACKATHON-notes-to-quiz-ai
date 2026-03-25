@@ -152,19 +152,16 @@ def ocr_quiz():
         # ⚠️ fallback if PDF text fail
         if not text or len(text) < 10:
             text = pytesseract.image_to_string(image)
-
-       if not text:
-    return jsonify({
-        "error": "No readable text found",
-        "raw_text": text
-    }), 400
-
-        quiz = generate_quiz(text)
-
-        return jsonify({
-            "quiz": quiz,
-            "extracted_text": text
-        })
+            if not text:
+                return jsonify({
+                    "error": "No readable text found",
+                    "raw_text": text
+                    }), 400
+            quiz = generate_quiz(text)
+            return jsonify({
+                "quiz": quiz,
+                "extracted_text": text
+                })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
