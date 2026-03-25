@@ -28,12 +28,16 @@ export default function App() {
     setError("⏳ Generating quiz...");
 
     try {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch(`${API_BASE_URL}/generate-quiz`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ text: inputText, difficulty }),
+        signal: controller.signal,
       });
 
       const data = await res.json();
@@ -44,8 +48,12 @@ export default function App() {
         setQuiz(data.quiz);
         setError("");
       }
-    } catch {
-      setError("❌ Backend error");
+    } catch (err) {
+      if (err.name === "AbortError") {
+        setError("⏱️ Server took too long. Try again.");
+      } else {
+        setError("❌ Backend error");
+      }
     } finally {
       setLoadingText(false);
     }
@@ -67,9 +75,13 @@ export default function App() {
     formData.append("image", selectedImage);
 
     try {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch(`${API_BASE_URL}/ocr-quiz`, {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
 
       const data = await res.json();
@@ -81,8 +93,12 @@ export default function App() {
         setPreviewText(data.extracted_text || "");
         setError("");
       }
-    } catch {
-      setError("❌ Image processing failed");
+    } catch (err) {
+      if (err.name === "AbortError") {
+        setError("⏱️ OCR is slow. Try again.");
+      } else {
+        setError("❌ Image processing failed");
+      }
     } finally {
       setLoadingImage(false);
     }
@@ -104,9 +120,13 @@ export default function App() {
     formData.append("pdf", selectedPDF);
 
     try {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch(`${API_BASE_URL}/pdf-quiz`, {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
 
       const data = await res.json();
@@ -118,8 +138,12 @@ export default function App() {
         setPreviewText(data.extracted_text || "");
         setError("");
       }
-    } catch {
-      setError("❌ PDF processing failed");
+    } catch (err) {
+      if (err.name === "AbortError") {
+        setError("⏱️ PDF processing slow. Try again.");
+      } else {
+        setError("❌ PDF processing failed");
+      }
     } finally {
       setLoadingPDF(false);
     }
@@ -190,12 +214,10 @@ export default function App() {
                 <option>Hard</option>
               </select>
 
-              {/* TEXT */}
               <button onClick={handleGenerateFromText} style={btnStyle}>
                 {loadingText ? "Processing..." : "Generate from Text"}
               </button>
 
-              {/* IMAGE */}
               <label className="file-input">
                 <input
                   type="file"
@@ -208,7 +230,6 @@ export default function App() {
                 {loadingImage ? "Processing..." : "Generate from Image"}
               </button>
 
-              {/* PDF */}
               <label className="file-input">
                 <input
                   type="file"
@@ -221,7 +242,6 @@ export default function App() {
                 {loadingPDF ? "Processing..." : "Generate from PDF"}
               </button>
 
-              {/* PREVIEW */}
               {previewText && (
                 <div style={{ marginTop: "10px", color: "white", fontSize: "12px" }}>
                   <strong>Detected Text:</strong>
@@ -229,7 +249,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ERROR */}
               {error && <p style={{ color: "red" }}>{error}</p>}
             </>
           ) : (
