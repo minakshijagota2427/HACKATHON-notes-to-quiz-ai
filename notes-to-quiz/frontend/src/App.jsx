@@ -171,71 +171,56 @@ export default function App() {
   };
 
   return (
-    <div className="wrapper">
-  <div className="card">
+    <div className="app-container">
+      <div className="main-card">
 
-    <h1 className="title">📘 Notes → Quiz AI</h1>
+        <h1 className="title">📘 Notes → Quiz AI</h1>
 
-    {!quiz ? (
-      <>
-        <textarea
-          placeholder="Paste your notes..."
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-        />
+        {!quiz ? (
+          <>
+            <textarea
+              placeholder="Paste your notes..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+            />
 
-        <select
-          value={difficulty}
-          onChange={(e) => setDifficulty(e.target.value)}
-        >
-          <option>Easy</option>
-          <option>Medium</option>
-          <option>Hard</option>
-        </select>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+            >
+              <option>Easy</option>
+              <option>Medium</option>
+              <option>Hard</option>
+            </select>
 
-        <button onClick={handleGenerateFromText} className="btn">
-          {loadingText ? "Processing..." : "Generate from Text"}
-        </button>
+            <button className="btn" onClick={handleGenerateFromText}>
+              Generate from Text
+            </button>
 
-        <div className="file-input">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setSelectedImage(e.target.files[0])}
-          />
-          <span>{selectedImage?.name || "No file chosen"}</span>
-        </div>
+            <input
+              className="file-input"
+              type="file"
+              onChange={(e) => setSelectedImage(e.target.files[0])}
+            />
+            <button className="btn" onClick={handleGenerateFromImage}>
+              Generate from Image
+            </button>
 
-        <button onClick={handleGenerateFromImage} className="btn">
-          {loadingImage ? "Processing..." : "Generate from Image"}
-        </button>
-
-        <div className="file-input">
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => setSelectedPDF(e.target.files[0])}
-          />
-          <span>{selectedPDF?.name || "No file chosen"}</span>
-        </div>
-
-        <button onClick={handleGenerateFromPDF} className="btn">
-          {loadingPDF ? "Processing..." : "Generate from PDF"}
-        </button>
-
-        {previewText && (
-          <div className="preview">
-            <strong>Detected Text:</strong>
-            <p>{previewText}</p>
-          </div>
+            <input
+              className="file-input"
+              type="file"
+              onChange={(e) => setSelectedPDF(e.target.files[0])}
+            />
+            <button className="btn" onClick={handleGenerateFromPDF}>
+              Generate from PDF
+            </button>
+            {error && <p className="error">{error}</p>}
+          </>
+        ) : (
+          <QuizCard quiz={quiz} onReset={reset} />
         )}
 
-        {error && <p className="error">{error}</p>}
-      </>
-    ) : (
-      <QuizCard quiz={quiz} onReset={reset} />
-    )}
-  </div>
-</div>
+      </div>
+    </div>
   );
 }
