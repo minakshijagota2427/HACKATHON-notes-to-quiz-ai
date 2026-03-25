@@ -1,9 +1,11 @@
 services:
   - type: web
-    name: notes-to-quiz-backend
+    name: notes-to-quiz-ai
     env: python
+
     buildCommand: |
       apt-get update
       apt-get install -y tesseract-ocr
       pip install -r backend/requirements.txt
+
     startCommand: python backend/app.py

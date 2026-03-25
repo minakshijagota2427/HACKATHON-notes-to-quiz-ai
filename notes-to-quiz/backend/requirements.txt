@@ -5,8 +5,7 @@ pillow
 PyPDF2
 opencv-python-headless
 numpy
-easyocr
-torch
+
 
 
 
