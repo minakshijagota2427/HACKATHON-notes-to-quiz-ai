@@ -28,39 +28,68 @@ def clean_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
+def extract_keywords(text):
+    words = text.split()
+    return [w for w in words if len(w) > 5]
+
 # ================= QUIZ GENERATOR =================
+
 def generate_quiz(text, difficulty="easy"):
     questions = []
 
-    text = clean_text(text)
-    sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 10]
+    # clean text
+    text = re.sub(r'\s+', ' ', text)
+    sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 20]
 
-    if not sentences:
+    if len(sentences) < 3:
         return []
 
     for sentence in sentences[:5]:
-        correct_answer = sentence
 
-        other_sentences = [s for s in sentences if s != sentence]
-        random.shuffle(other_sentences)
+        words = sentence.split()
 
-        distractors = other_sentences[:3]
+        # skip small sentences
+        if len(words) < 6:
+            continue
 
-        while len(distractors) < 3:
-            distractors.append("None of the above")
+        # pick a keyword (important word)
+        keywords = extract_keywords(sentence)
+        if not keywords:
+            continue
+        keyword = random.choice(keywords)
 
-        options = [correct_answer] + distractors
+        # create options
+        options = [keyword]
+
+        distractors = []
+        for s in sentences:
+            for w in s.split():
+                if w != keyword and len(w) > 4:
+                    distractors.append(w)
+
+        random.shuffle(distractors)
+
+        # add 3 wrong options
+        for d in distractors:
+            if len(options) >= 4:
+                break
+            if d not in options:
+                options.append(d)
+
         random.shuffle(options)
-
-        questions.append({
-            "type": "mcq",
-            "question": "Which statement is correct?",
-            "options": options,
-            "answer": correct_answer
-        })
-
+        q_type = random.choice(["fill", "direct"])
+        if q_type == "fill":
+            question_text = sentence.replace(keyword, "_____")
+            question = f"Fill in the blank: {question_text}"
+        else:
+            question = f"What is the meaning of '{keyword}' in this context?"
+            questions.append({
+                "type": "mcq",
+                "question": question,
+                "options": options,
+                "answer": keyword
+                })
     return questions
-
 # ================= FAST OCR =================
 def extract_text_from_image(image):
     try:
