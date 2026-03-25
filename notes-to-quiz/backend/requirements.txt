@@ -5,6 +5,7 @@ pillow
 PyPDF2
 opencv-python-headless
 numpy
+img2pdf
 
 
 
