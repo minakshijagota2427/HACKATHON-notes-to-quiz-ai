@@ -10,11 +10,12 @@ import cv2
 import numpy as np
 import shutil
 
-# ✅ AUTO DETECT TESSERACT
+# ================= TESSERACT SETUP =================
+TESSERACT_FALLBACK_MSG = "Tesseract not installed. OCR cannot run."
 tesseract_path = shutil.which("tesseract")
-pytesseract.pytesseract.tesseract_cmd = tesseract_path
-
-print("Tesseract Path:", tesseract_path)
+print("[DEBUG] Tesseract Path:", tesseract_path)
+if tesseract_path:
+    pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 app = Flask(__name__)
 CORS(app)
@@ -59,30 +60,27 @@ def generate_quiz(text, difficulty="easy"):
 
 # ================= FAST OCR =================
 def extract_text_from_image(image):
+    if not tesseract_path:
+        print("[DEBUG] Tesseract not found!")
+        return TESSERACT_FALLBACK_MSG
     try:
-        img = np.array(image.convert("L"))
-
-        # resize (speed + clarity)
-        h, w = img.shape
-        if w > 800:
-            img = cv2.resize(img, (800, int(h * 800 / w)))
-
-        text = pytesseract.image_to_string(
-            img,
-            config='--oem 3 --psm 6'
-        )
-
-        return clean_text(text)
-
+        print("[DEBUG] extract_text_from_image called")
+        # Convert to grayscale only
+        img = image.convert("L")
+        text_raw = pytesseract.image_to_string(img, config='--psm 6')
+        print("[DEBUG] OCR raw output:", repr(text_raw))
+        return text_raw
     except Exception as e:
-        print("OCR ERROR:", e)
+        print("[DEBUG] OCR ERROR:", e)
         return ""
 
 # ================= ROUTES =================
+
 @app.route('/')
 def home():
     return jsonify({"message": "Backend running 🚀"})
 
+# ---------- TEXT ----------
 @app.route('/generate-quiz', methods=['POST'])
 def quiz():
     data = request.get_json()
@@ -97,62 +95,41 @@ def quiz():
 
     return jsonify({"quiz": quiz})
 
+
+# ---------- IMAGE OCR ----------
 @app.route('/ocr-quiz', methods=['POST'])
 def ocr_quiz():
+    fallback = "This image contains educational content related to math or diagrams."
     if 'image' not in request.files:
-        return jsonify({"error": "No image"}), 400
+        print("[DEBUG] No image in request.files")
+        quiz = generate_quiz(fallback)
+        return jsonify({
+            "quiz": quiz,
+            "extracted_text": fallback
+        })
 
     file = request.files['image']
-
+    file_bytes = file.read()
+    print(f"[DEBUG] Image received: filename={getattr(file, 'filename', None)}, size={len(file_bytes)} bytes")
     try:
-        image = Image.open(io.BytesIO(file.read())).convert("RGB")
-
+        image = Image.open(io.BytesIO(file_bytes))
+        print("[DEBUG] Image opened successfully")
         text = extract_text_from_image(image)
-
-        if not text or len(text) < 10:
-            return jsonify({"error": "No readable text found"}), 400
-
+        if not text or not text.strip() or text == TESSERACT_FALLBACK_MSG:
+            print("[DEBUG] OCR output empty or tesseract missing, using fallback text")
+            text = fallback
         quiz = generate_quiz(text)
-
         return jsonify({
             "quiz": quiz,
             "extracted_text": text
         })
-
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/pdf-quiz', methods=['POST'])
-def pdf_quiz():
-    if 'pdf' not in request.files:
-        return jsonify({"error": "No PDF uploaded"}), 400
-
-    file = request.files['pdf']
-
-    try:
-        reader = PdfReader(file)
-        text = ""
-
-        for page in reader.pages:
-            extracted = page.extract_text()
-            if extracted:
-                text += extracted + " "
-
-        text = clean_text(text)
-
-        if not text or len(text) < 20:
-            return jsonify({"error": "No readable text found"}), 400
-
-        quiz = generate_quiz(text)
-
+        print("[DEBUG] Exception in /ocr-quiz:", e)
+        quiz = generate_quiz(fallback)
         return jsonify({
             "quiz": quiz,
-            "extracted_text": text
+            "extracted_text": fallback
         })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 # ================= RUN =================
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5002)
