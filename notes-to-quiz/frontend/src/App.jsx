@@ -12,24 +12,18 @@ export default function App() {
   const [error, setError] = useState("");
   const [difficulty, setDifficulty] = useState("easy");
 
-  // ✅ FILE HANDLERS
-  const handleImageUpload = (e) => {
-    setSelectedImage(e.target.files[0]);
-  };
+  // 🔥 NEW (extracted text preview)
+  const [previewText, setPreviewText] = useState("");
 
-  const handlePdfUpload = (e) => {
-    setSelectedPDF(e.target.files[0]);
-  };
-
-  // ✅ TEXT QUIZ
+  // ================= TEXT =================
   const handleGenerateFromText = async () => {
     if (!inputText.trim()) {
-      setError("Enter some text first");
+      setError("⚠️ Enter some text first");
       return;
     }
 
     setLoading(true);
-    setError("Server starting... please wait");
+    setError("⏳ Generating quiz...");
 
     try {
       const res = await fetch(`${API_BASE_URL}/generate-quiz`, {
@@ -39,28 +33,42 @@ export default function App() {
         },
         body: JSON.stringify({
           text: inputText,
-          difficulty: difficulty,
+          difficulty,
         }),
       });
 
-      if (!res.ok) throw new Error("Server error");
-
       const data = await res.json();
-      setQuiz(data.quiz);
-    } catch (err) {
-      setError("Backend not responding (Render sleep / CORS issue)");
+
+      if (!data.quiz || data.quiz.length === 0) {
+        setError("⚠️ No quiz generated");
+        setQuiz(null);
+      } else {
+        setQuiz(data.quiz);
+        setPreviewText(""); // clear preview
+        setError("");
+      }
+    } catch {
+      setError("❌ Backend not reachable");
       setQuiz(null);
     }
 
     setLoading(false);
   };
 
-  // ✅ IMAGE QUIZ
+  // ================= IMAGE FIXED =================
   const handleGenerateFromImage = async () => {
-    if (!selectedImage) return setError("Select an image first");
+    if (!selectedImage) {
+      setError("⚠️ Select image first");
+      return;
+    }
+
+    if (!selectedImage.type.startsWith("image/")) {
+      setError("❌ Please upload valid image");
+      return;
+    }
 
     setLoading(true);
-    setError("");
+    setError("⏳ Processing image...");
 
     const formData = new FormData();
     formData.append("image", selectedImage);
@@ -71,23 +79,40 @@ export default function App() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Image API error");
-
       const data = await res.json();
-      setQuiz(data.quiz);
+
+      console.log("🔥 OCR TEXT:", data.extracted_text); // ✅ DEBUG
+
+      if (!data.quiz || data.quiz.length === 0) {
+        setError(data.error || "⚠️ No text found in image");
+        setQuiz(null);
+        setPreviewText("");
+      } else {
+        setQuiz(data.quiz);
+        setPreviewText(data.extracted_text || ""); // ✅ SHOW TEXT
+        setError("");
+      }
     } catch {
-      setError("Image API failed");
+      setError("❌ Image processing failed");
     }
 
     setLoading(false);
   };
 
-  // ✅ PDF QUIZ
+  // ================= PDF FIXED =================
   const handleGenerateFromPDF = async () => {
-    if (!selectedPDF) return setError("Select a PDF first");
+    if (!selectedPDF) {
+      setError("⚠️ Select PDF first");
+      return;
+    }
+
+    if (selectedPDF.type !== "application/pdf") {
+      setError("❌ Upload valid PDF");
+      return;
+    }
 
     setLoading(true);
-    setError("");
+    setError("⏳ Reading PDF...");
 
     const formData = new FormData();
     formData.append("pdf", selectedPDF);
@@ -98,12 +123,21 @@ export default function App() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("PDF API error");
-
       const data = await res.json();
-      setQuiz(data.quiz);
+
+      console.log("🔥 PDF TEXT:", data.extracted_text); // ✅ DEBUG
+
+      if (!data.quiz || data.quiz.length === 0) {
+        setError(data.error || "⚠️ No readable text in PDF");
+        setQuiz(null);
+        setPreviewText("");
+      } else {
+        setQuiz(data.quiz);
+        setPreviewText(data.extracted_text || "");
+        setError("");
+      }
     } catch {
-      setError("PDF API failed");
+      setError("❌ PDF processing failed");
     }
 
     setLoading(false);
@@ -115,19 +149,19 @@ export default function App() {
     setSelectedImage(null);
     setSelectedPDF(null);
     setError("");
+    setPreviewText("");
   };
 
-  const btn = {
+  const btnStyle = {
     width: "100%",
-    padding: "10px",
-    borderRadius: "8px",
+    padding: "12px",
+    borderRadius: "10px",
     border: "none",
-    background: "#f16382",
+    background: "#6366f1",
     color: "white",
-    fontWeight: "500",
+    fontWeight: "600",
     cursor: "pointer",
-    marginBottom: "10px",
-    transition: "0.2s",
+    marginTop: "12px",
   };
 
   return (
@@ -136,38 +170,26 @@ export default function App() {
         minHeight: "100vh",
         backgroundImage: "url('/bg.jpg')",
         backgroundSize: "cover",
-        backgroundPosition: "center",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
       }}
     >
-      {/* OVERLAY */}
       <div
         style={{
-          width: "100%",
-          height: "100%",
-          background: "rgba(15, 23, 42, 0.75)",
-          backdropFilter: "blur(8px)",
+          minHeight: "100vh",
+          background: "rgba(15,23,42,0.75)",
           display: "flex",
-          alignItems: "center",
           justifyContent: "center",
+          alignItems: "center",
         }}
       >
-        {/* CARD */}
         <div
           style={{
             width: "420px",
             padding: "30px",
-            borderRadius: "16px",
-            background: "rgba(30, 41, 59, 0.6)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
-            textAlign: "center",
+            borderRadius: "20px",
+            background: "rgba(30,41,59,0.7)",
           }}
         >
-          <h1 style={{ color: "#f1f5f9", marginBottom: "20px" }}>
+          <h1 style={{ color: "white" }}>
             📘 Notes → Quiz AI
           </h1>
 
@@ -177,72 +199,46 @@ export default function App() {
                 placeholder="Paste your notes..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: "110px",
-                  borderRadius: "10px",
-                  padding: "12px",
-                  marginBottom: "15px",
-                }}
               />
 
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
               >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
+                <option>easy</option>
+                <option>medium</option>
+                <option>hard</option>
               </select>
 
-              <button
-                onClick={handleGenerateFromText}
-                style={btn}
-                onMouseOver={(e) =>
-                  (e.target.style.background = "#4f46e5")
-                }
-                onMouseOut={(e) =>
-                  (e.target.style.background = "#6366f1")
-                }
-              >
-                {loading ? "Loading..." : "Generate from Text"}
+              <button onClick={handleGenerateFromText} style={btnStyle}>
+                Generate from Text
               </button>
 
-              <input type="file" onChange={handleImageUpload} />
-
-              <button
-                onClick={handleGenerateFromImage}
-                style={btn}
-                onMouseOver={(e) =>
-                  (e.target.style.background = "#4f46e5")
-                }
-                onMouseOut={(e) =>
-                  (e.target.style.background = "#6366f1")
-                }
-              >
+              <input
+                type="file"
+                onChange={(e) => setSelectedImage(e.target.files[0])}
+              />
+              <button onClick={handleGenerateFromImage} style={btnStyle}>
                 Generate from Image
               </button>
 
-              <input type="file" onChange={handlePdfUpload} />
-
-              <button
-                onClick={handleGenerateFromPDF}
-                style={btn}
-                onMouseOver={(e) =>
-                  (e.target.style.background = "#4f46e5")
-                }
-                onMouseOut={(e) =>
-                  (e.target.style.background = "#6366f1")
-                }
-              >
+              <input
+                type="file"
+                onChange={(e) => setSelectedPDF(e.target.files[0])}
+              />
+              <button onClick={handleGenerateFromPDF} style={btnStyle}>
                 Generate from PDF
               </button>
 
-              {error && (
-                <p style={{ color: "red", marginTop: "10px" }}>
-                  {error}
-                </p>
+              {/* 🔥 SHOW EXTRACTED TEXT */}
+              {previewText && (
+                <div style={{ marginTop: "10px", color: "white", fontSize: "12px" }}>
+                  <strong>Detected Text:</strong>
+                  <p>{previewText}</p>
+                </div>
               )}
+
+              {error && <p style={{ color: "red" }}>{error}</p>}
             </>
           ) : (
             <QuizCard quiz={quiz} onReset={reset} />
